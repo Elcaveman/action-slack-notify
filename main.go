@@ -32,7 +32,7 @@ const (
 func slackDivider() string {
 	return `{"type":"divider"}`
 }
-func slackContext(authorName string,authorImg string) string {
+func slackContext(authorName string,authorIcon string,authorLink string) string {
 	return fmt.Sprintf(`{
 		"type":"context",
 		"elements": [
@@ -42,12 +42,11 @@ func slackContext(authorName string,authorImg string) string {
 				"alt_text": "%s"
 			},
 			{
-				"type": "plain_text",
-				"text": "Author: %s",
-				"emoji": true
+				"type": "mrkdwn",
+				"text": "*Author:* <%s|%s>"
 			}
 		]
-	}`,authorName,authorImg,authorName)
+	}`,authorIcon,authorName,authorLink,authorName)
 }
 func slackSection(text string) string {
 	return fmt.Sprintf(`{
@@ -100,7 +99,7 @@ func main(){
 	fmt.Print(color)
 	impact := "🔄 Server will reboot"
 	msg := fmt.Sprintf(`{
-		block:[
+		"blocks":[
 			%s ,
 			%s ,
 			%s ,
@@ -110,16 +109,17 @@ func main(){
 			%s ,
 			%s
 		]}`,
-		slackSection("*"+os.Getenv(envSolutionName)+"*"),
-		slackDivider(),
-		slackSection(":trump: " + "*"+commit_message+"*"),
-		slackSection("*Scope: *" + scope),
-		slackSection("*Impact: *" + impact),
-		slackSection("*Status: *" + status),
-		slackDivider(),
 		slackContext(
 			os.Getenv(EnvGithubActor),
-			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=32"))
+			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=32",
+			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor)),
+		slackSection("*Solution:* "+os.Getenv(envSolutionName)),
+		slackDivider(),
+		slackSection(":trump: *"+commit_message+"*"),
+		slackSection("*Scope:* " + scope),
+		slackSection("*Impact:* " + impact),
+		slackSection("*Status:* " + status),
+		slackDivider())
 	if err := send(endpoint, msg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error sending message: %s\n", err)
 		os.Exit(2)
