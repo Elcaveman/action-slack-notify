@@ -43,7 +43,7 @@ func slackContext(authorName string,authorIcon string,authorLink string) string 
 			},
 			{
 				"type": "mrkdwn",
-				"text": "*Author:* <%s|%s>"
+				"text": "*By* <%s|%s>"
 			}
 		]
 	}`,authorIcon,authorName,authorLink,authorName)
@@ -106,20 +106,18 @@ func main(){
 			%s ,
 			%s ,
 			%s ,
-			%s ,
 			%s
 		]}`,
+		slackSection("*Action:* Merge hotfixes into *"+os.Getenv(envSolutionName)+"*"),
+		slackSection("*Message:* _"+commit_message+"_ "),
+		slackSection("*Impact:* " + impact),
+		slackSection("*Scope:* " + scope),
+		slackSection("*Status:* " + status),
+		slackDivider(),
 		slackContext(
 			os.Getenv(EnvGithubActor),
-			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=32",
-			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor)),
-		slackSection("*Solution:* "+os.Getenv(envSolutionName)),
-		slackDivider(),
-		slackSection(":trump: *"+commit_message+"*"),
-		slackSection("*Scope:* " + scope),
-		slackSection("*Impact:* " + impact),
-		slackSection("*Status:* " + status),
-		slackDivider())
+			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=50",
+			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor)))
 	if err := send(endpoint, msg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error sending message: %s\n", err)
 		os.Exit(2)
