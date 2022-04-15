@@ -32,32 +32,33 @@ const (
 func slackDivider() string {
 	return `{"type":"divider"}`
 }
-func slackContext(authorName string,authorIcon string,authorLink string) string {
-	return fmt.Sprintf(`{
+func slackContext(elements ...string) string {
+	msg := `{
 		"type":"context",
-		"elements": [
-			{
-				"type": "image",
-				"image_url": "%s",
-				"alt_text": "%s"
-			},
-			{
-				"type": "mrkdwn",
-				"text": "*By* <%s|%s>"
-			}
-		]
-	}`,authorIcon,authorName,authorLink,authorName)
+		"elements": [`
+	
+	for i:=0; i<len(elements)-1; i++ { 
+		msg += elements[i]+" , "
+	}
+	msg += elements[len(elements)-1]
+	msg +="]}"
+	return msg
 }
-func slackSection(text string) string {
+func slackMarkDownElement(text string) string {
 	return fmt.Sprintf(`{
-		"type":"section",
-		"text": {
 			"type": "mrkdwn",
 			"text": "%s"
-		}
-	}`,text)
+		}`,text)
 }
-
+func slackImageElement(imageUrl string, altText string) string{
+	return fmt.Sprintf(`
+	{
+		"type": "image",
+		"image_url": "%s",
+		"alt_text": "%s"
+	}
+	`,imageUrl,altText)
+}
 func main(){
 	endpoint := os.Getenv(EnvSlackWebhook)
 	if endpoint == "" {
@@ -104,20 +105,21 @@ func main(){
 			%s ,
 			%s ,
 			%s ,
-			%s ,
-			%s ,
 			%s
 		]}`,
-		slackSection("*Action:* Merge hotfixes into *"+os.Getenv(envSolutionName)+"*"),
-		slackSection("*Message:* _"+commit_message+"_ "),
-		slackSection("*Impact:* " + impact),
-		slackSection("*Scope:* " + scope),
-		slackSection("*Status:* " + status),
-		slackDivider(),
+		slackContext(slackMarkDownElement("*Action:* Merge hotfixes into *"+os.Getenv(envSolutionName)+"*")),
+		slackContext(slackMarkDownElement("*Message:* _"+commit_message+"_ ")),
+		slackContext(slackMarkDownElement("*Impact:* " + impact)),
+		slackContext(slackMarkDownElement("*Scope:* " + scope)),
 		slackContext(
-			os.Getenv(EnvGithubActor),
-			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=50",
-			os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor)))
+			slackMarkDownElement("*Status:* " + status),
+			slackImageElement(
+				os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=50",
+				os.Getenv(EnvGithubActor)),
+			slackMarkDownElement(fmt.Sprintf(
+				`*By* <%s|%s>`,
+				os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor),
+				os.Getenv(EnvGithubActor)))))
 	if err := send(endpoint, msg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error sending message: %s\n", err)
 		os.Exit(2)
