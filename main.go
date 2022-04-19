@@ -29,32 +29,35 @@ const (
 	envSolutionName = "SOLUTION"
 )
 
-type Webhook struct {
-	Text        string       `json:"text,omitempty"`
-	UserName    string       `json:"username,omitempty"`
-	IconURL     string       `json:"icon_url,omitempty"`
-	IconEmoji   string       `json:"icon_emoji,omitempty"`
-	Channel     string       `json:"channel,omitempty"`
-	LinkNames   string       `json:"link_names,omitempty"`
-	UnfurlLinks bool         `json:"unfurl_links"`
-	Attachments []Attachment `json:"attachments,omitempty"`
+func slackDivider() string {
+	return `{"type":"divider"}`
 }
-
-type Attachment struct {
-	Fallback   string  `json:"fallback"`
-	Pretext    string  `json:"pretext,omitempty"`
-	Color      string  `json:"color,omitempty"`
-	AuthorName string  `json:"author_name,omitempty"`
-	AuthorLink string  `json:"author_link,omitempty"`
-	AuthorIcon string  `json:"author_icon,omitempty"`
-	Footer     string  `json:"footer,omitempty"`
-	Fields     []Field `json:"fields,omitempty"`
+func slackContext(elements ...string) string {
+	msg := `{
+		"type":"context",
+		"elements": [`
+	
+	for i:=0; i<len(elements)-1; i++ { 
+		msg += elements[i]+" , "
+	}
+	msg += elements[len(elements)-1]
+	msg +="]}"
+	return msg
 }
-
-type Field struct {
-	Title string `json:"title,omitempty"`
-	Value string `json:"value,omitempty"`
-	Short bool   `json:"short,omitempty"`
+func slackMarkDownElement(text string) string {
+	return fmt.Sprintf(`{
+			"type": "mrkdwn",
+			"text": "%s"
+		}`,text)
+}
+func slackImageElement(imageUrl string, altText string) string{
+	return fmt.Sprintf(`
+	{
+		"type": "image",
+		"image_url": "%s",
+		"alt_text": "%s"
+	}
+	`,imageUrl,altText)
 }
 func main(){
 	endpoint := os.Getenv(EnvSlackWebhook)
@@ -65,7 +68,6 @@ func main(){
 	if strings.HasPrefix(os.Getenv("GITHUB_WORKFLOW"), ".github") {
 		os.Setenv("GITHUB_WORKFLOW", "Link to action run")
 	}
-	long_sha := os.Getenv("GITHUB_SHA")
 	commit_message := os.Getenv(EnvGithubHeadCommitMessage)
 	var status string
 	if (os.Getenv(EnvJobStatus)=="success"){
@@ -78,37 +80,12 @@ func main(){
 		status = ":loading:"
 	}
 	
-	var head_ref string
+	var scope string
 	if (os.Getenv("GITHUB_HEAD_REF")=="main"){
-		head_ref = "🚀 Prod - " + os.Getenv(envSolutionName) 
+		scope = "🚀 Prod"
 	}else{
-		head_ref = "🚧 "+os.Getenv("GITHUB_HEAD_REF")+ " - "+ os.Getenv(envSolutionName) 
+		scope = "🚧 "+os.Getenv("GITHUB_HEAD_REF")
 	}
-	fields := []Field{}
-	mainFields := []Field{
-		{
-			Title: "Scope",
-			Value: head_ref,
-			Short: false,
-		},
-		{
-			Title: "Commit",
-			Value: "<" + os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv("GITHUB_REPOSITORY") + "/commit/" + long_sha + "|" + commit_message + ">",
-			Short: false,
-		},
-		{
-			Title: "Impact",
-			Value: "Server will restart smoothly",
-			Short: false,
-		},
-		{
-			Title: "Status",
-			Value: status,
-			Short: false,
-		},
-	}
-	fields = append(mainFields, fields...)
-	
 	color := ""
 	switch os.Getenv(EnvSlackColor) {
 	case "success":
@@ -118,46 +95,44 @@ func main(){
 	case "failure":
 		color = "danger"
 	default:
-		color = envOr(EnvSlackColor, "good")
+		color = EnvSlackColor
 	}
-
-	msg := Webhook{
-		UserName:  os.Getenv(EnvSlackUserName),
-		IconURL:   os.Getenv(EnvSlackIcon),
-		IconEmoji: os.Getenv(EnvSlackIconEmoji),
-		Channel:   os.Getenv(EnvSlackChannel),
-		LinkNames: os.Getenv(EnvSlackLinkNames),
-		Attachments: []Attachment{
-			{
-				Color:      color,
-				AuthorName: envOr(EnvGithubActor, ""),
-				AuthorLink: os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor),
-				AuthorIcon: os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=32",
-				Footer:     envOr(EnvSlackFooter, "<https://github.com/rtCamp/github-actions-library|Powered By rtCamp's GitHub Actions Library>"),
-				Fields:     fields,
-			},
-		},
-	}
-
+	fmt.Print(color)
+	impact := "🔄 Server will reboot"
+	msg := fmt.Sprintf(`{
+		"blocks":[
+			%s ,
+			%s ,
+			%s ,
+			%s ,
+			%s
+		]}`,
+		slackContext(slackMarkDownElement("*Action:* Merge hotfixes into *"+os.Getenv(envSolutionName)+"*")),
+		slackContext(slackMarkDownElement("*Message:* _"+commit_message+"_ ")),
+		slackContext(slackMarkDownElement("*Impact:* " + impact)),
+		slackContext(slackMarkDownElement("*Scope:* " + scope)),
+		slackContext(
+			slackMarkDownElement("*Status:* " + status),
+			slackImageElement(
+				os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor) + ".png?size=50",
+				os.Getenv(EnvGithubActor)),
+			slackMarkDownElement(fmt.Sprintf(
+				`*By* <%s|%s>`,
+				os.Getenv("GITHUB_SERVER_URL") + "/" + os.Getenv(EnvGithubActor),
+				os.Getenv(EnvGithubActor)))))
 	if err := send(endpoint, msg); err != nil {
 		fmt.Fprintf(os.Stderr, "Error sending message: %s\n", err)
 		os.Exit(2)
 	}
 }
 
-func envOr(name, def string) string {
-	if d, ok := os.LookupEnv(name); ok {
-		return d
-	}
-	return def
-}
-
-func send(endpoint string, msg Webhook) error {
-	enc, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	b := bytes.NewBuffer(enc)
+func send(endpoint string, msg string) error {
+	// enc, err := json.Marshal(msg)
+	// if err != nil {
+	// 	return err
+	// }
+	fmt.Print(msg)
+	b := bytes.NewBuffer([]byte(msg))
 	res, err := http.Post(endpoint, "application/json", b)
 	if err != nil {
 		return err
