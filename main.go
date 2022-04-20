@@ -70,11 +70,11 @@ func main(){
 	commit_message := os.Getenv(EnvGithubHeadCommitMessage)
 	var status string
 	if (os.Getenv(EnvJobStatus)=="success"){
-		status = ":coche-verte: @here"
+		status = ":coche-verte:"
 	}else if (os.Getenv(EnvJobStatus)=="failure"){
-		status = ":angryllaume: You're Fired! @" + os.Getenv(EnvGithubActor)
+		status = ":angryllaume: You're Fired! " + os.Getenv(EnvGithubActor)
 	}else if (os.Getenv(EnvJobStatus)=="cancelled"){
-		status = ":warning: Job Cancelled By @" + os.Getenv(EnvGithubActor)
+		status = ":warning: Job Cancelled By " + os.Getenv(EnvGithubActor)
 	}else{
 		status = ":loading:"
 	}
