@@ -58,12 +58,11 @@ func slackImageElement(imageUrl string, altText string) string{
 	}
 	`,imageUrl,altText)
 }
-func getBranchName(githubRef){
-	lis := strings.Split(githubRef,"/")
-	if (len(lis)>0){
-		return lis[ len(lis)-1 ]
-	}
-	else{
+func getBranchName(githubRef string) string {
+	lis := strings.Split(githubRef, "/")
+	if len(lis) > 0 {
+		return lis[len(lis)-1]
+	} else {
 		return ""
 	}
 }
