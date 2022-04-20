@@ -58,6 +58,15 @@ func slackImageElement(imageUrl string, altText string) string{
 	}
 	`,imageUrl,altText)
 }
+func getBranchName(githubRef){
+	lis := strings.Split(githubRef,"/")
+	if (len(lis)>0){
+		return lis[ len(lis)-1 ]
+	}
+	else{
+		return ""
+	}
+}
 func main(){
 	endpoint := os.Getenv(EnvSlackWebhook)
 	if endpoint == "" {
@@ -80,10 +89,10 @@ func main(){
 	}
 	
 	var scope string
-	if (os.Getenv("GITHUB_HEAD_REF")=="main"){
+	if (getBranchName(os.Getenv("GITHUB_HEAD_REF"))=="main"){
 		scope = "🚀 Prod"
 	}else{
-		scope = "🚧 "+os.Getenv("GITHUB_HEAD_REF")
+		scope = "🚧 "+getBranchName(os.Getenv("GITHUB_HEAD_REF"))
 	}
 	color := ""
 	switch os.Getenv(EnvSlackColor) {
